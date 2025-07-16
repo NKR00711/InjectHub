@@ -44,3 +44,42 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release/InjectHub.zip
+
+      - name: 🧠 Extract version & build from Info.plist
+        id: versioninfo
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" InjectHub/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" InjectHub/Info.plist)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: 📝 Fetch release notes from GitHub
+        id: releasenotes
+        run: |
+          RELEASE_NOTES=$(gh release view "${{ github.ref_name }}" --json body -q '.body')
+          echo "$RELEASE_NOTES" > release_notes.txt
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔄 Generate update.json
+        run: |
+          cat <<EOF > update.json
+          {
+            "version": "${{ steps.versioninfo.outputs.version }}",
+            "build": "${{ steps.versioninfo.outputs.build }}",
+            "notes": "${{ steps.releasenotes.outputs.notes }}",
+            "download_url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/InjectHub.zip"
+          }
+          EOF
+
+      # Optional: Upload update.json to release assets (or push to a repo/branch/gh-pages)
+      # - name: ⬆️ Upload update.json to release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: |
+      #       release/InjectHub.zip
+      #       update.json
+
