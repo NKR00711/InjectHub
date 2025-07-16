@@ -17,7 +17,7 @@
   </p>
 </p>
 
-# InjectHub
+# Introduction
 
 InjectHub is a powerful macOS utility designed to inject dynamic libraries (`.dylib`) into apps or binaries with ease. It provides a clean, native UI built using Swift and SwiftUI, offering tools for developers, researchers, and enthusiasts who need flexible and safe binary injection workflows.
 
