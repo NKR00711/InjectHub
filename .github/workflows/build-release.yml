@@ -6,9 +6,14 @@ on:
       - 'v*' # Trigger on version tags like v1.0.0
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
+    env:
+      GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: ⬇️ Checkout code
@@ -37,5 +42,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release/InjectHub.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
