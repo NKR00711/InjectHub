@@ -35,7 +35,10 @@ jobs:
           mkdir -p release
           APP_PATH=$(find build/Build/Products/Release -name "*.app" -maxdepth 1 | head -n 1)
           echo "App found at: $APP_PATH"
-          zip -r "release/InjectHub.zip" "$APP_PATH"
+          cp -R "$APP_PATH" ./release/InjectHub.app
+          pushd release > /dev/null
+          zip -r InjectHub.zip InjectHub.app
+          popd > /dev/null
 
       - name: 🚀 Create GitHub Release
         uses: softprops/action-gh-release@v2
