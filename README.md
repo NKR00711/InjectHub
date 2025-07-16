@@ -34,9 +34,6 @@ InjectHub is a powerful macOS utility designed to inject dynamic libraries (`.dy
 - 🗃 **Saved Apps Panel**  
   Save your injected apps with metadata like Bundle ID, paths, and dylib info. Easily reload configurations with one click.
 
-- 🔒 **Secure Root Handling**  
-  Uses AppleScript securely to run privileged commands when needed. Optionally store the root password in Keychain.
-
 - 📋 **Live Console Logs**  
   See real-time feedback of every operation with options to copy or clear logs.
 
