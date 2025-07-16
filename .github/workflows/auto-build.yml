@@ -1,0 +1,43 @@
+name: Build & Release macOS App
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: 🧱 Build .app
+        run: |
+          xcodebuild -scheme InjectHub \
+                     -project InjectHub.xcodeproj \
+                     -configuration Release \
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO
+
+      - name: 📦 Zip the .app
+        run: |
+          mkdir -p release
+          APP_PATH=$(find build/Build/Products/Release -name "*.app" -maxdepth 1 | head -n 1)
+          echo "App found at: $APP_PATH"
+          zip -r "release/InjectHub.zip" "$APP_PATH"
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/InjectHub.zip
