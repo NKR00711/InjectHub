@@ -81,7 +81,8 @@ xattr -cr /Applications/InjectHub.app
 ## 🖼 Screenshots
 
 <div align="center">
-  <img src="./Screenshots/CleanShot 2025-07-16 at 17.47.22@2x.png" alt="Screenshot">
+  <img src="./Screenshots/CleanShot 2025-07-16 at 17.58.38@2x.png" alt="Launch">
+  <img src="./Screenshots/CleanShot 2025-07-16 at 17.47.22@2x.png" alt="App Selected">
 </div>
 
 ## 🙏 Acknowledgements
