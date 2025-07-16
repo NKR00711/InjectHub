@@ -45,6 +45,9 @@ jobs:
         with:
           files: release/InjectHub.zip
 
+      - name: 🧰 Install GitHub CLI
+        run: brew install gh
+
       - name: 🧠 Extract version & build from Info.plist
         id: versioninfo
         run: |
@@ -74,6 +77,22 @@ jobs:
             "download_url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/InjectHub.zip"
           }
           EOF
+
+      - name: 📝 Commit update.json to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      
+          git fetch origin main
+          git checkout main
+          git pull origin main
+      
+          mv update.json update.json
+          git add update.json
+          git commit -m "🔄 Update update.json for version ${{ steps.versioninfo.outputs.version }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Optional: Upload update.json to release assets (or push to a repo/branch/gh-pages)
       # - name: ⬆️ Upload update.json to release
