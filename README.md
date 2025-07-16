@@ -53,7 +53,7 @@ InjectHub is a powerful macOS utility designed to inject dynamic libraries (`.dy
 
 ## 🛠 Requirements
 
-- macOS 15.5+  
+- macOS 14.0+  
 - Inserted dylibs must be compatible with the target architecture
 
 ---

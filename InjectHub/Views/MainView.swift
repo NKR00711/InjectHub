@@ -143,6 +143,8 @@ struct MainView: View {
             guard !didLoadDylib else { return }
                 didLoadDylib = true
             
+            logManager.clearLogs()
+            
             if useDefaultDylib {
                 DispatchQueue.global().async {
 //                    sleep(2)

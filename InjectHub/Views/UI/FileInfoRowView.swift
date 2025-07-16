@@ -121,7 +121,7 @@ struct FileInfoRowView: View {
                                                         bundlePath: appPath,
                                                         bundleID: bundleID,
                                                         dylibPath: dylibPath.path,
-                                                        targetFile: "\"\(fileToInject.path)\""
+                                                        targetFile: fileToInject.path
                                                     )
 
                                                     SavedAppManager.shared.addOrUpdate(savedApp)
@@ -212,7 +212,7 @@ struct FileInfoRowView: View {
     }
 
     private func loadAppInfo() {
-        guard let appURL = fileURL else { return }
+        guard let appURL = (fileToInject?.path.isEmpty == false) ? fileToInject : fileURL else { return }
 
         self.icon = NSWorkspace.shared.icon(forFile: appURL.path)
 
