@@ -70,6 +70,20 @@ InjectHub is a powerful macOS utility designed to inject dynamic libraries (`.dy
 ```bash
 xattr -cr /Applications/InjectHub.app
 ```
+## 📋 Quick Usage
+
+1. Open the InjectHub application.
+2. Select App/File to Inject.
+3. Select Dylib File.
+4. Click on Inject.
+5. Done ✅.
+
+## 🖼 Screenshots
+
+<div align="center">
+  <img src="./Screenshots/CleanShot 2025-07-16 at 17.47.22@2x.png" alt="Screenshot">
+</div>
+
 ## 🙏 Acknowledgements
 
 Thanks to the following amazing projects that made InjectHub possible:
