@@ -1,9 +1,6 @@
 name: Build & Release macOS App
 
 on:
-  push:
-    tags:
-      - 'v*' # Trigger on version tags like v1.0.0
   workflow_dispatch:
 
 permissions:
@@ -19,7 +16,7 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: Select Xcode 16.4
+      - name: 🧱 Select Xcode 16.4
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: 🧱 Build .app
@@ -28,8 +25,7 @@ jobs:
                      -project InjectHub.xcodeproj \
                      -configuration Release \
                      -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO
+                     CODE_SIGNING_ALLOWED=NO
 
       - name: 📦 Zip the .app
         run: |
@@ -38,7 +34,23 @@ jobs:
           echo "App found at: $APP_PATH"
           zip -r "release/InjectHub.zip" "$APP_PATH"
 
+      - name: 🧠 Extract version from Info.plist
+        id: version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" InjectHub/Info.plist)
+          echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          files: release/InjectHub.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            Automatically generated release from GitHub Actions.
+
+            **Version:** v${{ steps.version.outputs.version }}
+          artifacts: release/InjectHub.zip
+          allowUpdates: true
+          replacesArtifacts: true
