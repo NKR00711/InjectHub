@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
-  "build": "3",
-  "notes": "\"Bug Fixes and Improvements 🎉\\r\\n\\r\\n**Full Changelog**: https://github.com/NKR00711/InjectHub/compare/v1.0.1...v1.0.2\\n\"",
-  "download_url": "https://github.com/NKR00711/InjectHub/releases/download/v1.0.2/InjectHub.zip"
+  "version": "1.0.3",
+  "build": "4",
+  "notes": "\"- Added Try Mode For SIP On\\r\\n- Fixed Some Bugs for Sip Off \\r\\n\\r\\n**Full Changelog**: https://github.com/NKR00711/InjectHub/compare/v1.0.2...v1.0.3\\n\"",
+  "download_url": "https://github.com/NKR00711/InjectHub/releases/download/v1.0.3/InjectHub.zip"
 }
