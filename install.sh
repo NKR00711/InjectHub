@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+
 APP_NAME="InjectHub.app"
 TARGET_PATH="/Applications/$APP_NAME"
 
