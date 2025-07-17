@@ -80,14 +80,15 @@ jobs:
             release/InjectHub.zip
             release/InjectHub.dmg
 
-      - name: 🧰 Install GitHub CLI
-        run: brew install gh
-
-      - name: 🧠 Extract version & build from Info.plist
-        id: versioninfo
+      - name: 🔍 Extract version and build from Info.plist
+        id: get_version
         run: |
-          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" InjectHub/Info.plist)
-          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" InjectHub/Info.plist)
+          PLIST="build/Build/Products/Release/InjectHub.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print" "$PLIST" # Optional debug line
+      
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
+          
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build=$BUILD" >> $GITHUB_OUTPUT
 
