@@ -60,13 +60,34 @@ InjectHub is a powerful macOS utility designed to inject dynamic libraries (`.dy
 
 ## 📦 Installation
 
-1. **Download** the latest `.app` release from the [Releases](https://github.com/NKR00711/InjectHub/releases) page.
-2. Move `InjectHub.app` to your `/Applications` folder.
-3. If the app is quarantined by Gatekeeper, run:
+### 🔹 Option 1: Using `.dmg` Installer (Recommended Method)
 
-```bash
-xattr -cr /Applications/InjectHub.app
-```
+1. **Download** the latest `.dmg` from the [Releases page](https://github.com/NKR00711/InjectHub/releases).
+2. Open the `.dmg` — a window will appear.
+3. Double-click `install.sh` inside the DMG to Install.
+
+---
+
+### 🔹 Option 2: Using `.zip` Package (Minimal Download)
+
+1. **Download** the `.zip` file from the [Releases page](https://github.com/NKR00711/InjectHub/releases).
+2. Unzip it — you'll get `InjectHub.app`.
+3. Move `InjectHub.app` to `/Applications`.
+4. If macOS shows a security warning on first launch, run this command in Terminal to bypass Gatekeeper & sign the app:
+
+    ```bash
+    xattr -cr /Applications/InjectHub.app
+    codesign -f -s - --deep /Applications/InjectHub.app
+    ```
+
+---
+
+## ✅ Notes
+
+- `xattr -cr` removes the "quarantine" flag that macOS adds when downloading unsigned apps.
+- `codesign -f -s -` applies an **ad-hoc signature** so macOS accepts the app for local use.
+- You only need to do this once per download.
+
 ## 📋 Quick Usage
 
 1. Open the InjectHub application.
