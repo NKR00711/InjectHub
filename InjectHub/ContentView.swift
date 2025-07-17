@@ -56,6 +56,18 @@ struct ContentView: View {
                     }
                 }
                 .onAppear {
+                    if FullDiskAccess.isGranted {
+                        // Great!
+                    } else {
+                        FullDiskAccess.promptIfNotGranted(
+                            title: "Enable Full Disk Access for InjectHub",
+                            message: "InjectHub requires Full Disk Access to Easily Inject dylib and Make Backup Files.",
+                            settingsButtonTitle: "Open Settings",
+                            skipButtonTitle: "Later",
+                            canBeSuppressed: false, // `true` will display a "Do not ask again." checkbox and honor it
+                            icon: nil
+                        )
+                    }
                     if rootMode {
                         if passwordManager.getPassword() == nil {
                             showRootPasswordWindow = true

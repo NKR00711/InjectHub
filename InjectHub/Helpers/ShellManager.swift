@@ -153,49 +153,78 @@ final class ShellManager {
     }
     
     func runCommandInTerminal(_ command: String, completion: @escaping (Result<String, Error>) -> Void) {
-        // Create a new thread to run the command
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Prepare the process
-            let process = Process()
-            let pipe = Pipe()
-            self.logManager.addLog("\(command)", type: .info)
-            // Set the command to run
-            process.executableURL = URL(fileURLWithPath: "/bin/bash") // or "/bin/bash"
-            process.arguments = ["-c", command]
-            process.standardOutput = pipe
-            process.standardError = pipe
-            
-            // Launch the process
-            do {
-                try process.run()
-            } catch {
-                self.logManager.addLog("Failed to start process: \(error.localizedDescription)", type: .error)
-                completion(.failure(ShellError.appleScriptError("Failed to start process: \(error.localizedDescription)")))
-                return
-            }
-            
-            // Read the output
-            let outputHandle = pipe.fileHandleForReading
-            var outputData = Data()
-            
-            // Read the output asynchronously
-            outputHandle.readabilityHandler = { fileHandle in
-                let data = fileHandle.availableData
-                if data.count > 0 {
-                    outputData.append(data)
-                    self.logManager.addLog(String(data: data, encoding: .utf8) ?? "", type: .debug)
+        let appleScript = """
+        tell application "Terminal"
+            activate
+            do script "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
+        end tell
+        """
+
+        DispatchQueue.global().async {
+            var error: NSDictionary?
+            if let scriptObject = NSAppleScript(source: appleScript) {
+                let result = scriptObject.executeAndReturnError(&error)
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(ShellError.appleScriptError("AppleScript error: \(error)")))
+                    }
                 } else {
-                    // End of file
-                    fileHandle.readabilityHandler = nil
-                    let outputString = String(data: outputData, encoding: .utf8) ?? ""
-                    completion(.success(outputString))
+                    DispatchQueue.main.async {
+                        completion(.success(result.stringValue ?? "Command sent to Terminal"))
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(.failure(ShellError.appleScriptError("Failed to create AppleScript object")))
                 }
             }
-            
-            // Wait for the process to finish
-            process.waitUntilExit()
         }
     }
+    
+//    func runCommandInTerminal(_ command: String, completion: @escaping (Result<String, Error>) -> Void) {
+//        // Create a new thread to run the command
+//        DispatchQueue.global(qos: .userInitiated).async {
+//            // Prepare the process
+//            let process = Process()
+//            let pipe = Pipe()
+//            self.logManager.addLog("\(command)", type: .info)
+//            // Set the command to run
+//            process.executableURL = URL(fileURLWithPath: "/bin/bash") // or "/bin/bash"
+//            process.arguments = ["-c", command]
+//            process.standardOutput = pipe
+//            process.standardError = pipe
+//            
+//            // Launch the process
+//            do {
+//                try process.run()
+//            } catch {
+//                self.logManager.addLog("Failed to start process: \(error.localizedDescription)", type: .error)
+//                completion(.failure(ShellError.appleScriptError("Failed to start process: \(error.localizedDescription)")))
+//                return
+//            }
+//            
+//            // Read the output
+//            let outputHandle = pipe.fileHandleForReading
+//            var outputData = Data()
+//            
+//            // Read the output asynchronously
+//            outputHandle.readabilityHandler = { fileHandle in
+//                let data = fileHandle.availableData
+//                if data.count > 0 {
+//                    outputData.append(data)
+//                    self.logManager.addLog(String(data: data, encoding: .utf8) ?? "", type: .debug)
+//                } else {
+//                    // End of file
+//                    fileHandle.readabilityHandler = nil
+//                    let outputString = String(data: outputData, encoding: .utf8) ?? ""
+//                    completion(.success(outputString))
+//                }
+//            }
+//            
+//            // Wait for the process to finish
+//            process.waitUntilExit()
+//        }
+//    }
 
     enum ShellError: Error, LocalizedError {
         case passwordNotFound
@@ -236,12 +265,12 @@ final class ShellManager {
         return output.lowercased().contains("disabled")
     }
     
-    func InjectDylib(targetPath: URL?, dylibPath: URL?) {
+    func InjectDylib(targetPath: URL?, dylibPath: URL?, dylibDestination: String) {
             let sourcePath = dylibPath!.path
-            let destinationDir = targetPath!.deletingLastPathComponent().path
+            let destinationDir = dylibDestination//targetPath!.deletingLastPathComponent().path
             let destinationPath = "\(destinationDir)/\(dylibPath!.lastPathComponent)"
 
-            var copyCommand = "cp \"\(sourcePath)\" \"\(destinationPath)\""
+            var copyCommand = "sudo cp -rf \"\(sourcePath)\" \"\(destinationPath)\""
 
             guard let optoolPath = Bundle.main.path(forResource: "insert_dylib", ofType: "") else {
                 self.logManager.addLog("❌ insert_dylib binary not found", type: .error)
@@ -256,11 +285,11 @@ final class ShellManager {
             self.runCommandAsRoot(copyCommand) {  copyResult in
                 self.logManager.addLog("✅ DyLib Placed.", type: .success)
                 print("✅ dylib copied:", copyResult)
-                var fullCommand = "\"\(optoolPath)\" \(dyLibPathArg) \"\(targetPath!.path)\""
+                var fullCommand = "sudo \"\(optoolPath)\" \(dyLibPathArg) \"\(targetPath!.path)\""
 
                 if !self.noBackup {
                     let backupCommand = """
-                    cp "\(targetPath!.path)" "\(targetPath!.path).backup"
+                    sudo cp -rf "\(targetPath!.path)" "\(targetPath!.path).backup"
                     """
                     
                     self.runCommandAsRoot(backupCommand) {  copyResult in
@@ -281,7 +310,7 @@ final class ShellManager {
                 }
                 
                 if self.autoDeQuarantine {
-                    ShellManager.shared.runCommandAsRoot("xattr -rc \"\(targetPath!.path)\"") { result in
+                    ShellManager.shared.runCommandAsRoot("sudo xattr -rc \"\(targetPath!.path)\"") { result in
                         switch result {
                         case .success(let output):
 //                            self.logManager.addLog("Output: \(output)", type: .info)
@@ -294,7 +323,7 @@ final class ShellManager {
                 }
                 
                 if self.dummyCodeSign && !self.isSIPDisabled() {
-                    ShellManager.shared.runCommandAsRoot("codesign -f -s - --deep \"\(targetPath!.path)\"") { result in
+                    ShellManager.shared.runCommandAsRoot("sudo codesign -f -s - --deep \"\(targetPath!.path)\"") { result in
                         switch result {
                         case .success(let output):
 //                            self.logManager.addLog("Output: \(output)", type: .info)

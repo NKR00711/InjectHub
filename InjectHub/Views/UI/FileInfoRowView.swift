@@ -16,6 +16,9 @@ struct FileInfoRowView: View {
     @Binding var fileURL: URL?
     @Binding var fileToInject: URL?
     @ObservedObject var logManager: LogManager
+    @State var dylibDest: String = ""
+    @State var mainExec: String = ""
+
     
     @State private var appPath: String = ""
     @State private var icon: NSImage?
@@ -79,7 +82,7 @@ struct FileInfoRowView: View {
                                 GridItem(.adaptive(minimum: 120, maximum: 130), spacing: 12),
                             ], spacing: 12) {
                                 
-                                if false, ShellManager.shared.isSIPDisabled(), let dylibPath = dylibPath {
+                                if specialInject, let dylibPath = dylibPath {
                                     ActionButton(
                                         title: "Try",
                                         icon: "bolt",
@@ -87,8 +90,8 @@ struct FileInfoRowView: View {
                                         action: {
                                             ShellManager.shared.runCommandInTerminal("""
                                                 echo "dylib_path: \(dylibPath.path)"
-                                                echo "app_path: \(fileToInject.path)"
-                                                env DYLD_INSERT_LIBRARIES=""\(dylibPath.path)\"" ""\(fileToInject.path)\""
+                                                echo "app_path: \(mainExec)"
+                                                env DYLD_INSERT_LIBRARIES="\(dylibPath.path)\" "\(mainExec)\"
                                                 """) { result in
                                                 switch result {
                                                 case .success(let output):
@@ -109,7 +112,7 @@ struct FileInfoRowView: View {
                                         icon: "bolt.circle",
                                         isPrimary: 1,
                                         action: {
-                                            ShellManager.shared.InjectDylib(targetPath: fileToInject, dylibPath: dylibPath)
+                                            ShellManager.shared.InjectDylib(targetPath: fileToInject, dylibPath: dylibPath, dylibDestination: dylibDest)
                                     
                                             let bundleURL = URL(fileURLWithPath: appPath)
 
@@ -146,13 +149,13 @@ struct FileInfoRowView: View {
                                         icon: "arrow.right.circle",
                                         isPrimary: 1,
                                         action: {
-                                            ShellManager.shared.runCommandAsRoot("xattr -rc \"\(appPath)\"") { result in
+                                            ShellManager.shared.runCommandAsRoot("sudo xattr -rc \"\(appPath)\"") { result in
                                                 switch result {
                                                 case .success(let output):
                                                     self.logManager.addLog("Output: \(output)", type: .info)
                                                     print("Output: \(output)")
                                                     if self.dummyCodeSign && !ShellManager.shared.isSIPDisabled() {
-                                                        ShellManager.shared.runCommandAsRoot("codesign -f -s - --deep \"\(appPath)\"") { result in
+                                                        ShellManager.shared.runCommandAsRoot("sudo codesign -f -s - --deep \"\(appPath)\"") { result in
                                                             switch result {
                                                             case .success(let output):
                                                                 self.logManager.addLog("Output: \(output)", type: .info)
@@ -229,14 +232,20 @@ struct FileInfoRowView: View {
             if let tmpbundle = bundleURL.flatMap(Bundle.init(url:)), tmpbundle.bundleIdentifier != nil {
                 if isUnixExecutable(fileURL: appURL) {
                     fileToInject = appURL
+                    dylibDest = tmpbundle.executableURL!.deletingLastPathComponent().path
+                    mainExec = tmpbundle.executableURL!.path
                     print("The selected file is a binary executable. \(appURL.path)")
                 } else {
                     fileToInject = tmpbundle.executableURL
+                    dylibDest = tmpbundle.executableURL!.deletingLastPathComponent().path
+                    mainExec = tmpbundle.executableURL!.path
                     print("The selected file is not a binary executable. \(appURL.path)")
                 }
                 self.architectures = detectArchitectures(at: tmpbundle.executableURL!.path)
             } else {
+                dylibDest = appURL.deletingLastPathComponent().path
                 fileToInject = appURL
+                mainExec = fileToInject!.path
                 self.architectures = detectArchitectures(at: appURL.path)
             }
             self.appPath = bundleURL!.path
@@ -246,6 +255,8 @@ struct FileInfoRowView: View {
             self.bundleID = getBinaryIdentifier(at: appURL) ?? "N/A"
             self.version = "—"
             fileToInject = appURL
+            dylibDest = appURL.deletingLastPathComponent().path
+            mainExec = appURL.path
             self.architectures = detectArchitectures(at: appURL.path)
         }
     }

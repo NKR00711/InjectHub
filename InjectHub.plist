@@ -11,6 +11,8 @@
     <key>NSDesktopFolderUsageDescription</key>
     <string>This app needs access to your Desktop folder.</string>
 
+    <key>NSAppleEventsUsageDescription</key>
+    <string>InjectHub needs access to Terminal to send shell commands.</string>
 <!--    <key>NSQuitAlwaysKeepsWindows</key>-->
 <!--    <false/>-->
 <!---->
