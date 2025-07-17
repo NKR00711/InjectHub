@@ -81,9 +81,13 @@ jobs:
             release/InjectHub.dmg
 
       - name: 🔍 Extract version and build from Info.plist
-        id: get_version
+        id: versioninfo
         run: |
-          PLIST="build/Build/Products/Release/InjectHub.app/Contents/Info.plist"
+          APP_PATH=$(find build/Build/Products/Release -name "InjectHub.app" -maxdepth 1 | head -n 1)
+          echo "App found at: $APP_PATH"
+          
+          PLIST="$APP_PATH/Contents/Info.plist"
+          echo "Using Info.plist at: $PLIST"
           /usr/libexec/PlistBuddy -c "Print" "$PLIST" # Optional debug line
       
           VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
@@ -105,14 +109,22 @@ jobs:
 
       - name: 🔄 Generate update.json
         run: |
-          cat <<EOF > update.json
-          {
-            "version": "${{ steps.versioninfo.outputs.version }}",
-            "build": "${{ steps.versioninfo.outputs.build }}",
-            "notes": "${{ steps.releasenotes.outputs.notes }}",
-            "download_url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/InjectHub.zip"
-          }
-          EOF
+          VERSION="${{ steps.versioninfo.outputs.version }}"
+          BUILD="${{ steps.versioninfo.outputs.build }}"
+          NOTES=$(echo "${{ steps.releasenotes.outputs.notes }}" | jq -Rs .)
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/InjectHub.zip"
+      
+          jq -n \
+            --arg version "$VERSION" \
+            --arg build "$BUILD" \
+            --arg notes "$NOTES" \
+            --arg url "$DOWNLOAD_URL" \
+            '{
+              version: $version,
+              build: $build,
+              notes: $notes,
+              download_url: $url
+            }' > update.json
 
       - name: 📝 Commit update.json to main
         run: |
