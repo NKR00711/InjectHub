@@ -3,7 +3,7 @@ name: Build & Release macOS App
 on:
   push:
     tags:
-      - 'v*' # Trigger on version tags like v1.0.0
+      - 'v*'
 
 permissions:
   contents: write
@@ -30,20 +30,55 @@ jobs:
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO
 
-      - name: 📦 Zip the .app
+      # - name: 📦 Zip the .app
+      #   run: |
+      #     mkdir -p release
+      #     APP_PATH=$(find build/Build/Products/Release -name "*.app" -maxdepth 1 | head -n 1)
+      #     echo "App found at: $APP_PATH"
+      #     cp -R "$APP_PATH" ./release/InjectHub.app
+      #     pushd release > /dev/null
+      #     zip -r InjectHub.zip InjectHub.app
+      #     popd > /dev/null
+
+      # - name: 🚀 Create GitHub Release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: release/InjectHub.zip
+
+      - name: 📦 Prepare Release Folder
         run: |
-          mkdir -p release
+          mkdir -p release/InjectHub-dmg
           APP_PATH=$(find build/Build/Products/Release -name "*.app" -maxdepth 1 | head -n 1)
-          echo "App found at: $APP_PATH"
-          cp -R "$APP_PATH" ./release/InjectHub.app
+          echo "✅ App found at: $APP_PATH"
+      
+          # For zip – only the app
+          cp -R "$APP_PATH" release/InjectHub.app
+      
+          # For dmg – app + install.sh
+          cp -R "$APP_PATH" release/InjectHub-dmg/InjectHub.app
+          cp install.sh release/InjectHub-dmg/install.sh
+          chmod +x release/InjectHub-dmg/install.sh
+
+      - name: 📦 Create .zip Archive (app only)
+        run: |
           pushd release > /dev/null
           zip -r InjectHub.zip InjectHub.app
           popd > /dev/null
-
-      - name: 🚀 Create GitHub Release
+      
+      - name: 📦 Create .dmg (app + script)
+        run: |
+          hdiutil create \
+            -volname "InjectHub Installer" \
+            -srcfolder "release/InjectHub-dmg" \
+            -ov -format UDZO \
+            release/InjectHub.dmg
+      
+      - name: 🚀 Create GitHub Release with both .zip and .dmg
         uses: softprops/action-gh-release@v2
         with:
-          files: release/InjectHub.zip
+          files: |
+            release/InjectHub.zip
+            release/InjectHub.dmg
 
       - name: 🧰 Install GitHub CLI
         run: brew install gh
