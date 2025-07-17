@@ -5,44 +5,16 @@
 //  Created by NKR on 15/07/25.
 //
 
-import Foundation
 import SwiftUI
+import Foundation
+import AppKit
 
 class UpdateManager: ObservableObject {
     static let shared = UpdateManager()
     @StateObject private var logManager = LogManager.shared
 
-//    func checkForUpdates(showAlertOnly: Bool = false) {
-//        guard let url = URL(string: "https://github.com/NKR00711/InjectHub/raw/refs/heads/main/update.json") else { return }
-//
-//        URLSession.shared.dataTask(with: url) { data, _, _ in
-//            guard let data = data,
-//                  let info = try? JSONDecoder().decode(UpdateInfo.self, from: data) else {
-//                DispatchQueue.main.async {
-//                    self.showNoUpdateAlert() // fallback alert
-//                }
-//                return
-//            }
-//
-//            let current = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
-//            if info.build.compare(current, options: .numeric) == .orderedDescending {
-//                DispatchQueue.main.async {
-//                    // show update alert and download if necessary
-//                    if let downloadURL = URL(string: info.download_url), !showAlertOnly {
-//                        self.downloadAndInstallUpdate(from: downloadURL)
-//                    } else {
-//                        self.showUpdateAlert(info: info)
-//                    }
-//                }
-//            } else if showAlertOnly {
-//                DispatchQueue.main.async {
-//                    self.showNoUpdateAlert()
-//                }
-//            }
-//        }.resume()
-//    }
-    /// Checks for updates and either shows alert or downloads
-    func checkForUpdates(showAlertOnly: Bool = false) {
+    /// Check for updates. Set `showAlertOnly` to true to only notify about updates without downloading.
+    func checkForUpdates(showAlertOnly: Bool = false,backgroundCheck: Bool = true) {
         guard let url = URL(string: "https://github.com/NKR00711/InjectHub/raw/refs/heads/main/update.json") else {
             return
         }
@@ -51,94 +23,111 @@ class UpdateManager: ObservableObject {
             guard let data = data,
                   let info = try? JSONDecoder().decode(UpdateInfo.self, from: data) else {
                 DispatchQueue.main.async {
-                    self.showNoUpdateAlert() // fallback alert
+                    if showAlertOnly, !backgroundCheck {
+                        self.showNoUpdateAlert()
+                    }
                 }
                 return
             }
 
             let currentBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
-            if info.build.compare(currentBuild, options: .numeric) == .orderedDescending {
-                DispatchQueue.main.async {
+            let isUpdateAvailable = info.build.compare(currentBuild, options: .numeric) == .orderedDescending
+
+            DispatchQueue.main.async {
+                if isUpdateAvailable {
                     if showAlertOnly {
                         self.showUpdateAlert(info: info)
-                    } else {
-                        if let url = URL(string: info.download_url) {
-                            self.downloadAndInstallUpdate(from: url)
-                        }
+                    } else if let url = URL(string: info.download_url) {
+                        self.downloadAndInstallUpdate(from: url)
                     }
+                } else if showAlertOnly, !backgroundCheck {
+                    self.showNoUpdateAlert()
                 }
             }
         }.resume()
     }
 
-    /// Downloads and installs the update, replacing current app
+    /// Download and install the update from a URL
     func downloadAndInstallUpdate(from url: URL) {
-        let task = URLSession.shared.downloadTask(with: url) { tempURL, _, error in
+        URLSession.shared.downloadTask(with: url) { tempURL, _, error in
             guard let tempURL = tempURL else {
                 self.logManager.addLog("❌ Download failed: \(error?.localizedDescription ?? "Unknown error")", type: .error)
-                print("❌ Download failed: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
 
             let fileManager = FileManager.default
-            let destinationPath = "/Applications/\(Bundle.main.bundleURL.lastPathComponent)"
+            let appName = Bundle.main.bundleURL.lastPathComponent
+            let destinationPath = "/Applications/\(appName)"
             let destinationURL = URL(fileURLWithPath: destinationPath)
 
             DispatchQueue.main.async {
                 do {
-                    // Remove old app if exists
+                    // Remove old app
                     if fileManager.fileExists(atPath: destinationPath) {
                         try fileManager.removeItem(at: destinationURL)
                     }
 
-                    // Unzip or move the new app to /Applications
-                    // Assumes ZIP — change if your server sends `.app` directly
-                    try self.unzipItem(at: tempURL, to: destinationURL)
+                    if tempURL.pathExtension == "zip" {
+                        // Unzip and move
+                        let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                        try fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                        try self.unzipItem(at: tempURL, to: tempDir)
+
+                        let extractedApp = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+                            .first(where: { $0.pathExtension == "app" }) ?? tempDir
+
+                        try fileManager.moveItem(at: extractedApp, to: destinationURL)
+                    } else if tempURL.pathExtension == "app" {
+                        try fileManager.moveItem(at: tempURL, to: destinationURL)
+                    } else {
+                        throw NSError(domain: "UpdateError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unknown file format."])
+                    }
+
+                    // Fix attributes and codesign
+                    ShellManager.shared.runCommandAsRoot("xattr -rc \"\(destinationPath)\"") { _ in }
+                    ShellManager.shared.runCommandAsRoot("codesign -f -s - --deep \"\(destinationPath)\"") { _ in }
 
                     // Relaunch app
                     try Process.run(URL(fileURLWithPath: "/usr/bin/open"), arguments: [destinationPath])
                     exit(0)
                 } catch {
-                    self.logManager.addLog("❌ Failed to replace app: \(error.localizedDescription)", type: .error)
-                    print("❌ Failed to replace app: \(error.localizedDescription)")
+                    self.logManager.addLog("❌ Update failed: \(error.localizedDescription)", type: .error)
                 }
             }
-        }
-        task.resume()
+        }.resume()
     }
 
-    /// Shows an alert (can replace with SwiftUI alert callback)
+    /// Show update available alert
     private func showUpdateAlert(info: UpdateInfo) {
         let alert = NSAlert()
         alert.messageText = "Update Available"
-        alert.informativeText = "Version \(info.version) is available.\nWould you like to update now? \n\(info.notes)"
-
+        alert.informativeText = "Version \(info.version) is available.\n\n\(info.notes)"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Update")
         alert.addButton(withTitle: "Later")
 
         let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: info.download_url) {
-                self.downloadAndInstallUpdate(from: url)
-            }
+        if response == .alertFirstButtonReturn, let url = URL(string: info.download_url) {
+            self.downloadAndInstallUpdate(from: url)
         }
     }
-    
+
+    /// Show no update available alert
+    private func showNoUpdateAlert() {
+        let alert = NSAlert()
+        alert.messageText = "You're up to date!"
+        alert.informativeText = "You're already using the latest version of \(Bundle.main.bundleURL.deletingPathExtension().lastPathComponent)."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    /// Unzips a file using macOS's `unzip` utility
     private func unzipItem(at: URL, to: URL) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
         process.arguments = ["-q", at.path, "-d", to.path]
         try process.run()
         process.waitUntilExit()
-    }
-    
-    private func showNoUpdateAlert() {
-        let alert = NSAlert()
-        alert.messageText = "You're up to date"
-        alert.informativeText = "You're already using the latest version of \(Bundle.main.bundleURL.lastPathComponent)."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
     }
 }

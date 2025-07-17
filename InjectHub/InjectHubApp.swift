@@ -57,7 +57,7 @@ struct InjectHubApp: App {
                 Divider()
                 Button("Check for Updates…") {
                     if autoCheckForUpdates {
-                        UpdateManager.shared.checkForUpdates(showAlertOnly: !autoDownloadUpdates)
+                        UpdateManager.shared.checkForUpdates(showAlertOnly: !autoDownloadUpdates, backgroundCheck: false)
                     }
                 }
                 .keyboardShortcut("U", modifiers: [.command, .shift])

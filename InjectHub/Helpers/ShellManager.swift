@@ -284,7 +284,7 @@ final class ShellManager {
                     ShellManager.shared.runCommandAsRoot("xattr -rc \"\(targetPath!.path)\"") { result in
                         switch result {
                         case .success(let output):
-                            self.logManager.addLog("Output: \(output)", type: .info)
+//                            self.logManager.addLog("Output: \(output)", type: .info)
                             print("Output: \(output)")
                         case .failure(let error):
                             self.logManager.addLog("Error: \(error.localizedDescription)", type: .error)
@@ -297,7 +297,7 @@ final class ShellManager {
                     ShellManager.shared.runCommandAsRoot("codesign -f -s - --deep \"\(targetPath!.path)\"") { result in
                         switch result {
                         case .success(let output):
-                            self.logManager.addLog("Output: \(output)", type: .info)
+//                            self.logManager.addLog("Output: \(output)", type: .info)
                             print("Output: \(output)")
                         case .failure(let error):
                             self.logManager.addLog("Error: \(error.localizedDescription)", type: .error)
