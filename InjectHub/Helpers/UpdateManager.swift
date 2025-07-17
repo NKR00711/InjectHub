@@ -67,21 +67,19 @@ class UpdateManager: ObservableObject {
                         try fileManager.removeItem(at: destinationURL)
                     }
 
-                    if tempURL.pathExtension == "zip" {
-                        // Unzip and move
-                        let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-                        try fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
-                        try self.unzipItem(at: tempURL, to: tempDir)
+                    // Unzip and move
+                    let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                    try fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                    try self.unzipItem(at: tempURL, to: tempDir)
 
-                        let extractedApp = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
-                            .first(where: { $0.pathExtension == "app" }) ?? tempDir
+                    let extractedApp = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+                        .first(where: { $0.pathExtension == "app" }) // Assuming the unzipped content contains an .app file
 
-                        try fileManager.moveItem(at: extractedApp, to: destinationURL)
-                    } else if tempURL.pathExtension == "app" {
-                        try fileManager.moveItem(at: tempURL, to: destinationURL)
-                    } else {
-                        throw NSError(domain: "UpdateError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unknown file format."])
+                    guard let appToMove = extractedApp else {
+                        throw NSError(domain: "UpdateError", code: 1, userInfo: [NSLocalizedDescriptionKey: "No .app file found in the ZIP."])
                     }
+
+                    try fileManager.moveItem(at: appToMove, to: destinationURL)
 
                     // Fix attributes and codesign
                     ShellManager.shared.runCommandAsRoot("xattr -rc \"\(destinationPath)\"") { _ in }
